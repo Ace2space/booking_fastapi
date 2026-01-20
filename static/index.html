@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Treebo Booking Demo</title>
+  <style>
+    body {
+      font-family: system-ui, sans-serif;
+      background: #f5f7fa;
+      padding: 40px;
+    }
+
+    h2 {
+      margin-bottom: 12px;
+    }
+
+    .container {
+      max-width: 900px;
+      margin: auto;
+    }
+
+    .card {
+      background: white;
+      padding: 20px;
+      border-radius: 12px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.08);
+      margin-bottom: 24px;
+    }
+
+    input, button {
+      padding: 10px;
+      margin-top: 8px;
+      border-radius: 8px;
+      border: 1px solid #ddd;
+      width: 100%;
+    }
+
+    button {
+      background: #000;
+      color: white;
+      cursor: pointer;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+      gap: 16px;
+    }
+
+    .booking-card {
+      border: 1px solid #eee;
+      border-radius: 10px;
+      padding: 16px;
+    }
+
+    .booking-card h4 {
+      margin: 0 0 6px;
+    }
+
+    .status {
+      font-size: 12px;
+      margin-bottom: 8px;
+      opacity: 0.7;
+    }
+
+    .actions button {
+      margin-top: 6px;
+      width: 100%;
+      background: #111;
+    }
+
+    .actions button.cancel {
+      background: #c0392b;
+    }
+  </style>
+</head>
+<body>
+
+<div class="container">
+
+  <!-- CREATE BOOKING -->
+  <div class="card">
+    <h2>Create Booking</h2>
+    <input id="user" placeholder="User name" />
+    <input id="hotel" placeholder="Hotel name" />
+    <input id="checkin" type="datetime-local" />
+    <input id="checkout" type="datetime-local" />
+    <button onclick="createBooking()">Create</button>
+  </div>
+
+  <!-- BOOKINGS LIST -->
+  <div class="card">
+    <h2>All Bookings</h2>
+    <div class="grid" id="bookings"></div>
+  </div>
+
+</div>
+
+<script>
+  async function createBooking() {
+    await fetch("/bookings", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        user_name: user.value,
+        hotel_name: hotel.value,
+        check_in: checkin.value.replace("T", " "),
+        check_out: checkout.value.replace("T", " ")
+      })
+    });
+    loadBookings();
+  }
+
+  async function loadBookings() {
+    const res = await fetch("/bookings");
+    const data = await res.json();
+
+    const container = document.getElementById("bookings");
+    container.innerHTML = "";
+
+    data.forEach(b => {
+      const div = document.createElement("div");
+      div.className = "booking-card";
+      div.innerHTML = `
+        <h4>#${b.id} – ${b.user_name}</h4>
+        <div>${b.hotel_name}</div>
+        <div class="status">${b.status}</div>
+        <div class="actions">
+          <button onclick="getBooking(${b.id})">Get</button>
+          <button onclick="updateBooking(${b.id})">Edit</button>
+          <button class="cancel" onclick="cancelBooking(${b.id})">Cancel</button>
+        </div>
+      `;
+      container.appendChild(div);
+    });
+  }
+
+  async function getBooking(id) {
+    const res = await fetch(`/bookings/${id}`);
+    const b = await res.json();
+    alert(JSON.stringify(b, null, 2));
+  }
+
+  async function updateBooking(id) {
+    const hotel = prompt("New hotel name?");
+    if (!hotel) return;
+
+    await fetch(`/bookings/${id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        hotel_name: hotel,
+        check_in: new Date().toISOString().slice(0,19).replace("T"," "),
+        check_out: new Date(Date.now()+86400000).toISOString().slice(0,19).replace("T"," ")
+      })
+    });
+
+    loadBookings();
+  }
+
+  async function cancelBooking(id) {
+    await fetch(`/bookings/${id}`, { method: "DELETE" });
+    loadBookings();
+  }
+
+  loadBookings();
+</script>
+
+</body>
+</html>
